@@ -2,7 +2,7 @@
 // generic/seq_packet_protocol.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -24,6 +24,7 @@
 #include "asio/generic/basic_endpoint.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace generic {
@@ -72,19 +73,19 @@ public:
   }
 
   /// Obtain an identifier for the type of the protocol.
-  int type() const
+  int type() const ASIO_NOEXCEPT
   {
     return ASIO_OS_DEF(SOCK_SEQPACKET);
   }
 
   /// Obtain an identifier for the protocol.
-  int protocol() const
+  int protocol() const ASIO_NOEXCEPT
   {
     return protocol_;
   }
 
   /// Obtain an identifier for the protocol family.
-  int family() const
+  int family() const ASIO_NOEXCEPT
   {
     return family_;
   }
@@ -116,6 +117,7 @@ private:
 
 } // namespace generic
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

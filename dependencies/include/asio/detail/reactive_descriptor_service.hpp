@@ -2,7 +2,7 @@
 // detail/reactive_descriptor_service.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,24 +22,28 @@
   && !defined(__CYGWIN__)
 
 #include "asio/buffer.hpp"
-#include "asio/io_service.hpp"
-#include "asio/detail/addressof.hpp"
+#include "asio/execution_context.hpp"
 #include "asio/detail/bind_handler.hpp"
 #include "asio/detail/buffer_sequence_adapter.hpp"
 #include "asio/detail/descriptor_ops.hpp"
 #include "asio/detail/descriptor_read_op.hpp"
 #include "asio/detail/descriptor_write_op.hpp"
 #include "asio/detail/fenced_block.hpp"
+#include "asio/detail/memory.hpp"
 #include "asio/detail/noncopyable.hpp"
 #include "asio/detail/reactive_null_buffers_op.hpp"
+#include "asio/detail/reactive_wait_op.hpp"
 #include "asio/detail/reactor.hpp"
+#include "asio/posix/descriptor_base.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
 
-class reactive_descriptor_service
+class reactive_descriptor_service :
+  public execution_context_service_base<reactive_descriptor_service>
 {
 public:
   // The native type of a descriptor.
@@ -72,18 +76,17 @@ public:
   };
 
   // Constructor.
-  ASIO_DECL reactive_descriptor_service(
-      clmdep_asio::io_service& io_service);
+  ASIO_DECL reactive_descriptor_service(execution_context& context);
 
   // Destroy all user-defined handler objects owned by the service.
-  ASIO_DECL void shutdown_service();
+  ASIO_DECL void shutdown();
 
   // Construct a new descriptor implementation.
   ASIO_DECL void construct(implementation_type& impl);
 
   // Move-construct a new descriptor implementation.
   ASIO_DECL void move_construct(implementation_type& impl,
-      implementation_type& other_impl);
+      implementation_type& other_impl) ASIO_NOEXCEPT;
 
   // Move-assign from another descriptor implementation.
   ASIO_DECL void move_assign(implementation_type& impl,
@@ -161,6 +164,72 @@ public:
     return ec;
   }
 
+  // Wait for the descriptor to become ready to read, ready to write, or to have
+  // pending error conditions.
+  clmdep_asio::error_code wait(implementation_type& impl,
+      posix::descriptor_base::wait_type w, clmdep_asio::error_code& ec)
+  {
+    switch (w)
+    {
+    case posix::descriptor_base::wait_read:
+      descriptor_ops::poll_read(impl.descriptor_, impl.state_, ec);
+      break;
+    case posix::descriptor_base::wait_write:
+      descriptor_ops::poll_write(impl.descriptor_, impl.state_, ec);
+      break;
+    case posix::descriptor_base::wait_error:
+      descriptor_ops::poll_error(impl.descriptor_, impl.state_, ec);
+      break;
+    default:
+      ec = clmdep_asio::error::invalid_argument;
+      break;
+    }
+
+    return ec;
+  }
+
+  // Asynchronously wait for the descriptor to become ready to read, ready to
+  // write, or to have pending error conditions.
+  template <typename Handler, typename IoExecutor>
+  void async_wait(implementation_type& impl,
+      posix::descriptor_base::wait_type w,
+      Handler& handler, const IoExecutor& io_ex)
+  {
+    bool is_continuation =
+      boost_asio_handler_cont_helpers::is_continuation(handler);
+
+    // Allocate and construct an operation to wrap the handler.
+    typedef reactive_wait_op<Handler, IoExecutor> op;
+    typename op::ptr p = { clmdep_asio::detail::addressof(handler),
+      op::ptr::allocate(handler), 0 };
+    p.p = new (p.v) op(handler, io_ex);
+
+    ASIO_HANDLER_CREATION((reactor_.context(), *p.p, "descriptor",
+          &impl, impl.descriptor_, "async_wait"));
+
+    int op_type;
+    switch (w)
+    {
+    case posix::descriptor_base::wait_read:
+        op_type = reactor::read_op;
+        break;
+    case posix::descriptor_base::wait_write:
+        op_type = reactor::write_op;
+        break;
+    case posix::descriptor_base::wait_error:
+        op_type = reactor::except_op;
+        break;
+      default:
+        p.p->ec_ = clmdep_asio::error::invalid_argument;
+        reactor_.post_immediate_completion(p.p, is_continuation);
+        p.v = p.p = 0;
+        return;
+    }
+
+    start_op(impl, op_type, p.p, is_continuation, false, false);
+    p.v = p.p = 0;
+  }
+
   // Write some data to the descriptor.
   template <typename ConstBufferSequence>
   size_t write_some(implementation_type& impl,
@@ -185,21 +254,22 @@ public:
 
   // Start an asynchronous write. The data being sent must be valid for the
   // lifetime of the asynchronous operation.
-  template <typename ConstBufferSequence, typename Handler>
+  template <typename ConstBufferSequence, typename Handler, typename IoExecutor>
   void async_write_some(implementation_type& impl,
-      const ConstBufferSequence& buffers, Handler& handler)
+      const ConstBufferSequence& buffers, Handler& handler,
+      const IoExecutor& io_ex)
   {
     bool is_continuation =
-      clmdep_asio_handler_cont_helpers::is_continuation(handler);
+      boost_asio_handler_cont_helpers::is_continuation(handler);
 
     // Allocate and construct an operation to wrap the handler.
-    typedef descriptor_write_op<ConstBufferSequence, Handler> op;
+    typedef descriptor_write_op<ConstBufferSequence, Handler, IoExecutor> op;
     typename op::ptr p = { clmdep_asio::detail::addressof(handler),
-      clmdep_asio_handler_alloc_helpers::allocate(
-        sizeof(op), handler), 0 };
-    p.p = new (p.v) op(impl.descriptor_, buffers, handler);
+      op::ptr::allocate(handler), 0 };
+    p.p = new (p.v) op(impl.descriptor_, buffers, handler, io_ex);
 
-    ASIO_HANDLER_CREATION((p.p, "descriptor", &impl, "async_write_some"));
+    ASIO_HANDLER_CREATION((reactor_.context(), *p.p, "descriptor",
+          &impl, impl.descriptor_, "async_write_some"));
 
     start_op(impl, reactor::write_op, p.p, is_continuation, true,
         buffer_sequence_adapter<clmdep_asio::const_buffer,
@@ -208,22 +278,21 @@ public:
   }
 
   // Start an asynchronous wait until data can be written without blocking.
-  template <typename Handler>
+  template <typename Handler, typename IoExecutor>
   void async_write_some(implementation_type& impl,
-      const null_buffers&, Handler& handler)
+      const null_buffers&, Handler& handler, const IoExecutor& io_ex)
   {
     bool is_continuation =
-      clmdep_asio_handler_cont_helpers::is_continuation(handler);
+      boost_asio_handler_cont_helpers::is_continuation(handler);
 
     // Allocate and construct an operation to wrap the handler.
-    typedef reactive_null_buffers_op<Handler> op;
+    typedef reactive_null_buffers_op<Handler, IoExecutor> op;
     typename op::ptr p = { clmdep_asio::detail::addressof(handler),
-      clmdep_asio_handler_alloc_helpers::allocate(
-        sizeof(op), handler), 0 };
-    p.p = new (p.v) op(handler);
+      op::ptr::allocate(handler), 0 };
+    p.p = new (p.v) op(handler, io_ex);
 
-    ASIO_HANDLER_CREATION((p.p, "descriptor",
-          &impl, "async_write_some(null_buffers)"));
+    ASIO_HANDLER_CREATION((reactor_.context(), *p.p, "descriptor",
+          &impl, impl.descriptor_, "async_write_some(null_buffers)"));
 
     start_op(impl, reactor::write_op, p.p, is_continuation, false, false);
     p.v = p.p = 0;
@@ -253,21 +322,23 @@ public:
 
   // Start an asynchronous read. The buffer for the data being read must be
   // valid for the lifetime of the asynchronous operation.
-  template <typename MutableBufferSequence, typename Handler>
+  template <typename MutableBufferSequence,
+      typename Handler, typename IoExecutor>
   void async_read_some(implementation_type& impl,
-      const MutableBufferSequence& buffers, Handler& handler)
+      const MutableBufferSequence& buffers,
+      Handler& handler, const IoExecutor& io_ex)
   {
     bool is_continuation =
-      clmdep_asio_handler_cont_helpers::is_continuation(handler);
+      boost_asio_handler_cont_helpers::is_continuation(handler);
 
     // Allocate and construct an operation to wrap the handler.
-    typedef descriptor_read_op<MutableBufferSequence, Handler> op;
+    typedef descriptor_read_op<MutableBufferSequence, Handler, IoExecutor> op;
     typename op::ptr p = { clmdep_asio::detail::addressof(handler),
-      clmdep_asio_handler_alloc_helpers::allocate(
-        sizeof(op), handler), 0 };
-    p.p = new (p.v) op(impl.descriptor_, buffers, handler);
+      op::ptr::allocate(handler), 0 };
+    p.p = new (p.v) op(impl.descriptor_, buffers, handler, io_ex);
 
-    ASIO_HANDLER_CREATION((p.p, "descriptor", &impl, "async_read_some"));
+    ASIO_HANDLER_CREATION((reactor_.context(), *p.p, "descriptor",
+          &impl, impl.descriptor_, "async_read_some"));
 
     start_op(impl, reactor::read_op, p.p, is_continuation, true,
         buffer_sequence_adapter<clmdep_asio::mutable_buffer,
@@ -276,22 +347,21 @@ public:
   }
 
   // Wait until data can be read without blocking.
-  template <typename Handler>
+  template <typename Handler, typename IoExecutor>
   void async_read_some(implementation_type& impl,
-      const null_buffers&, Handler& handler)
+      const null_buffers&, Handler& handler, const IoExecutor& io_ex)
   {
     bool is_continuation =
-      clmdep_asio_handler_cont_helpers::is_continuation(handler);
+      boost_asio_handler_cont_helpers::is_continuation(handler);
 
     // Allocate and construct an operation to wrap the handler.
-    typedef reactive_null_buffers_op<Handler> op;
+    typedef reactive_null_buffers_op<Handler, IoExecutor> op;
     typename op::ptr p = { clmdep_asio::detail::addressof(handler),
-      clmdep_asio_handler_alloc_helpers::allocate(
-        sizeof(op), handler), 0 };
-    p.p = new (p.v) op(handler);
+      op::ptr::allocate(handler), 0 };
+    p.p = new (p.v) op(handler, io_ex);
 
-    ASIO_HANDLER_CREATION((p.p, "descriptor",
-          &impl, "async_read_some(null_buffers)"));
+    ASIO_HANDLER_CREATION((reactor_.context(), *p.p, "descriptor",
+          &impl, impl.descriptor_, "async_read_some(null_buffers)"));
 
     start_op(impl, reactor::read_op, p.p, is_continuation, false, false);
     p.v = p.p = 0;
@@ -308,6 +378,7 @@ private:
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

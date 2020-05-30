@@ -2,7 +2,7 @@
 // impl/serial_port_base.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 // Copyright (c) 2008 Rep Invariant Systems, Inc. (info@repinvariant.com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -17,6 +17,7 @@
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 
@@ -53,6 +54,7 @@ inline unsigned int serial_port_base::character_size::value() const
 }
 
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

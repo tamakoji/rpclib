@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <stdint.h>
 #include <thread>
+#include <chrono>
 
 #include "asio.hpp"
 #include "format.h"
@@ -114,6 +115,11 @@ void server::suppress_exceptions(bool suppress) {
 }
 
 void server::run() { pimpl->io_.run(); }
+
+void server::run_for(uint32_t milliseconds) {
+    auto timeout = std::chrono::milliseconds(milliseconds);
+    pimpl->io_.run_for(timeout);
+}
 
 void server::async_run(std::size_t worker_threads) {
     pimpl->loop_workers_.create_threads(worker_threads, [this]() {

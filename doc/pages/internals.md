@@ -24,7 +24,7 @@ outside `rpclib`.
     supported, it's possible that you will want to link to a system-installed `asio` because you
     are using it in your application anyway and want to avoid code bloat. To do this, delete the
     library from the dependencies subfolder of the repository, and define `RPCLIB_ASIO` as `asio`
-    (or `boost::asio`). This will cause `rpclib` to find the system-wide installed `asio` and use
+    (or `clmdep_asio`). This will cause `rpclib` to find the system-wide installed `asio` and use
     the namespace name provided. You might also need to change some of the preprocessor definitions
     in the CMakeLists.txt if you want to use the boost-flavored asio, not the standalone one.
 

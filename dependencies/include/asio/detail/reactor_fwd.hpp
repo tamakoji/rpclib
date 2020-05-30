@@ -2,7 +2,7 @@
 // detail/reactor_fwd.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,10 +17,11 @@
 
 #include "asio/detail/config.hpp"
 
+
 namespace clmdep_asio {
 namespace detail {
 
-#if defined(ASIO_WINDOWS_RUNTIME)
+#if defined(ASIO_HAS_IOCP) || defined(ASIO_WINDOWS_RUNTIME)
 typedef class null_reactor reactor;
 #elif defined(ASIO_HAS_IOCP)
 typedef class select_reactor reactor;
@@ -36,5 +37,6 @@ typedef class select_reactor reactor;
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #endif // ASIO_DETAIL_REACTOR_FWD_HPP

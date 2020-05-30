@@ -2,7 +2,7 @@
 // detail/static_mutex.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -29,6 +29,7 @@
 # error Only Windows and POSIX are supported!
 #endif
 
+
 namespace clmdep_asio {
 namespace detail {
 
@@ -48,5 +49,6 @@ typedef std_static_mutex static_mutex;
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #endif // ASIO_DETAIL_STATIC_MUTEX_HPP

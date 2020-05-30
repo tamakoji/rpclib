@@ -2,7 +2,7 @@
 // detail/win_event.ipp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,13 +25,19 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace detail {
 
 win_event::win_event()
   : state_(0)
 {
-  events_[0] = ::CreateEvent(0, true, false, 0);
+#if defined(ASIO_WINDOWS_APP)
+  events_[0] = ::CreateEventExW(0, 0,
+      CREATE_EVENT_MANUAL_RESET, EVENT_ALL_ACCESS);
+#else // defined(ASIO_WINDOWS_APP)
+  events_[0] = ::CreateEventW(0, true, false, 0);
+#endif // defined(ASIO_WINDOWS_APP)
   if (!events_[0])
   {
     DWORD last_error = ::GetLastError();
@@ -40,7 +46,11 @@ win_event::win_event()
     clmdep_asio::detail::throw_error(ec, "event");
   }
 
-  events_[1] = ::CreateEvent(0, false, false, 0);
+#if defined(ASIO_WINDOWS_APP)
+  events_[1] = ::CreateEventExW(0, 0, 0, EVENT_ALL_ACCESS);
+#else // defined(ASIO_WINDOWS_APP)
+  events_[1] = ::CreateEventW(0, false, false, 0);
+#endif // defined(ASIO_WINDOWS_APP)
   if (!events_[1])
   {
     DWORD last_error = ::GetLastError();
@@ -59,6 +69,7 @@ win_event::~win_event()
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

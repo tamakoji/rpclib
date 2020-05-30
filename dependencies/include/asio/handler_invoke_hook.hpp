@@ -2,7 +2,7 @@
 // handler_invoke_hook.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,19 +19,20 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 
-/** @defgroup clmdep_asio_handler_invoke clmdep_asio::clmdep_asio_handler_invoke
+/** @defgroup asio_handler_invoke clmdep_asio::asio_handler_invoke
  *
  * @brief Default invoke function for handlers.
  *
  * Completion handlers for asynchronous operations are invoked by the
- * io_service associated with the corresponding object (e.g. a socket or
+ * io_context associated with the corresponding object (e.g. a socket or
  * deadline_timer). Certain guarantees are made on when the handler may be
  * invoked, in particular that a handler can only be invoked from a thread that
- * is currently calling @c run() on the corresponding io_service object.
+ * is currently calling @c run() on the corresponding io_context object.
  * Handlers may subsequently be invoked through other objects (such as
- * io_service::strand objects) that provide additional guarantees.
+ * io_context::strand objects) that provide additional guarantees.
  *
  * When asynchronous operations are composed from other asynchronous
  * operations, all intermediate handlers should be invoked using the same
@@ -40,7 +41,7 @@ namespace clmdep_asio {
  * hooking function ensures that the invoked method used for the final handler
  * is accessible at each intermediate step.
  *
- * Implement clmdep_asio_handler_invoke for your own handlers to specify a custom
+ * Implement asio_handler_invoke for your own handlers to specify a custom
  * invocation strategy.
  *
  * This default implementation invokes the function object like so:
@@ -53,7 +54,7 @@ namespace clmdep_asio {
  * class my_handler;
  *
  * template <typename Function>
- * void clmdep_asio_handler_invoke(Function function, my_handler* context)
+ * void asio_handler_invoke(Function function, my_handler* context)
  * {
  *   context->strand_.dispatch(function);
  * }
@@ -63,14 +64,14 @@ namespace clmdep_asio {
 
 /// Default handler invocation hook used for non-const function objects.
 template <typename Function>
-inline void clmdep_asio_handler_invoke(Function& function, ...)
+inline void asio_handler_invoke(Function& function, ...)
 {
   function();
 }
 
 /// Default handler invocation hook used for const function objects.
 template <typename Function>
-inline void clmdep_asio_handler_invoke(const Function& function, ...)
+inline void asio_handler_invoke(const Function& function, ...)
 {
   Function tmp(function);
   tmp();
@@ -79,6 +80,7 @@ inline void clmdep_asio_handler_invoke(const Function& function, ...)
 /*@}*/
 
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

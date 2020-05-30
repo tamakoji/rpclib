@@ -2,7 +2,7 @@
 // detail/descriptor_ops.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -22,10 +22,12 @@
   && !defined(__CYGWIN__)
 
 #include <cstddef>
+#include "asio/error.hpp"
 #include "asio/error_code.hpp"
 #include "asio/detail/socket_types.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -100,9 +102,13 @@ ASIO_DECL int poll_read(int d,
 ASIO_DECL int poll_write(int d,
     state_type state, clmdep_asio::error_code& ec);
 
+ASIO_DECL int poll_error(int d,
+    state_type state, clmdep_asio::error_code& ec);
+
 } // namespace descriptor_ops
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

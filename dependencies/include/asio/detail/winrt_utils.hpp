@@ -2,7 +2,7 @@
 // detail/winrt_utils.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,16 +23,16 @@
 #include <cstdlib>
 #include <future>
 #include <locale>
-#include <memory>
 #include <robuffer.h>
 #include <windows.storage.streams.h>
 #include <wrl/implements.h>
 #include "asio/buffer.hpp"
 #include "asio/error_code.hpp"
-#include "asio/detail/addressof.hpp"
+#include "asio/detail/memory.hpp"
 #include "asio/detail/socket_ops.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -83,7 +83,8 @@ inline Windows::Storage::Streams::IBuffer^ buffer_dup(
     const ConstBufferSequence& buffers)
 {
   using Microsoft::WRL::ComPtr;
-  std::size_t size = clmdep_asio::buffer_size(buffers);
+  using clmdep_asio::buffer_size;
+  std::size_t size = buffer_size(buffers);
   auto b = ref new Windows::Storage::Streams::Buffer(size);
   ComPtr<IInspectable> insp = reinterpret_cast<IInspectable*>(b);
   ComPtr<Windows::Storage::Streams::IBufferByteAccess> bacc;
@@ -98,6 +99,7 @@ inline Windows::Storage::Streams::IBuffer^ buffer_dup(
 } // namespace winrt_utils
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

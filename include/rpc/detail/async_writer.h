@@ -19,7 +19,7 @@ namespace detail {
 //! \brief Common logic for classes that have a write queue with async writing.
 class async_writer : public std::enable_shared_from_this<async_writer> {
 public:
-    async_writer(RPCLIB_ASIO::io_service *io,
+    async_writer(RPCLIB_ASIO::io_context *io,
                  RPCLIB_ASIO::ip::tcp::socket socket)
         : socket_(std::move(socket)), write_strand_(*io), exit_(false) {}
 
@@ -82,7 +82,7 @@ protected:
 
 protected:
     RPCLIB_ASIO::ip::tcp::socket socket_;
-    RPCLIB_ASIO::strand write_strand_;
+    RPCLIB_ASIO::io_context::strand write_strand_;
     std::atomic_bool exit_{false};
     bool exited_ = false;
     std::mutex m_exit_;

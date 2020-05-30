@@ -2,7 +2,7 @@
 // wait_traits.hpp
 // ~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,6 +17,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 
 /// Wait traits suitable for use with the basic_waitable_timer class template.
@@ -24,7 +25,7 @@ template <typename Clock>
 struct wait_traits
 {
   /// Convert a clock duration into a duration used for waiting.
-  /** 
+  /**
    * @returns @c d.
    */
   static typename Clock::duration to_wait_duration(
@@ -32,9 +33,25 @@ struct wait_traits
   {
     return d;
   }
+
+  /// Convert a clock duration into a duration used for waiting.
+  /**
+   * @returns @c d.
+   */
+  static typename Clock::duration to_wait_duration(
+      const typename Clock::time_point& t)
+  {
+    typename Clock::time_point now = Clock::now();
+    if (now + (Clock::duration::max)() < t)
+      return (Clock::duration::max)();
+    if (now + (Clock::duration::min)() > t)
+      return (Clock::duration::min)();
+    return t - now;
+  }
 };
 
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

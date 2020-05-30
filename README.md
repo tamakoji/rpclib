@@ -11,6 +11,10 @@
   * No IDL to learn
   * No code generation step to integrate in your build, just C++
 
+# Notice
+
+**This is a fork of [rpclib](https://github.com/rpclib/rpclib)**, where ASIO was updated to 1.16.1, by that server supports `server::run_for`. Which is also a trick used in [CARLA](https://carla.org/), running a server for a short period of time during `Tick` of UnrealEngine so that functions lies within game thread. The way CALRA was implement works but with wrapping another asio over rpclib server. This rpclib update will natively support `run_for` inside the rpclib. See `examples/server_run_for` for how to use it.
+
 # Look&feel
 
 ## Server

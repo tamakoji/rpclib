@@ -2,7 +2,7 @@
 // detail/operation.hpp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -20,8 +20,9 @@
 #if defined(ASIO_HAS_IOCP)
 # include "asio/detail/win_iocp_operation.hpp"
 #else
-# include "asio/detail/task_io_service_operation.hpp"
+# include "asio/detail/scheduler_operation.hpp"
 #endif
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -29,10 +30,11 @@ namespace detail {
 #if defined(ASIO_HAS_IOCP)
 typedef win_iocp_operation operation;
 #else
-typedef task_io_service_operation operation;
+typedef scheduler_operation operation;
 #endif
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #endif // ASIO_DETAIL_OPERATION_HPP

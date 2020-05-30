@@ -2,7 +2,7 @@
 // generic/detail/impl/endpoint.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,6 +26,7 @@
 #include "asio/generic/detail/endpoint.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace generic {
@@ -94,7 +95,8 @@ void endpoint::init(const void* sock_addr,
 
   using namespace std; // For memset and memcpy.
   memset(&data_.generic, 0, sizeof(clmdep_asio::detail::sockaddr_storage_type));
-  memcpy(&data_.generic, sock_addr, sock_addr_size);
+  if (sock_addr_size > 0)
+    memcpy(&data_.generic, sock_addr, sock_addr_size);
 
   size_ = sock_addr_size;
   protocol_ = sock_protocol;
@@ -103,6 +105,7 @@ void endpoint::init(const void* sock_addr,
 } // namespace detail
 } // namespace generic
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

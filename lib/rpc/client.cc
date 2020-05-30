@@ -143,8 +143,8 @@ struct client::impl {
         std::pair<std::string, std::promise<RPCLIB_MSGPACK::object_handle>>;
 
     client *parent_;
-    RPCLIB_ASIO::io_service io_;
-    RPCLIB_ASIO::strand strand_;
+    RPCLIB_ASIO::io_context io_;
+    RPCLIB_ASIO::io_context::strand strand_;
     std::atomic<int> call_idx_; /// The index of the last call made
     std::unordered_map<uint32_t, call_t> ongoing_calls_;
     std::string addr_;

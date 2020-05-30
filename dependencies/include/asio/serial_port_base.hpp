@@ -2,7 +2,7 @@
 // serial_port_base.hpp
 // ~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 // Copyright (c) 2008 Rep Invariant Systems, Inc. (info@repinvariant.com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -38,6 +38,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 
 /// The serial_port_base class is used as a base for the basic_serial_port class
@@ -54,10 +55,10 @@ public:
   public:
     explicit baud_rate(unsigned int rate = 0);
     unsigned int value() const;
-    ASIO_DECL clmdep_asio::error_code store(
+    ASIO_DECL ASIO_SYNC_OP_VOID store(
         ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec) const;
-    ASIO_DECL clmdep_asio::error_code load(
+    ASIO_DECL ASIO_SYNC_OP_VOID load(
         const ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec);
   private:
@@ -74,10 +75,10 @@ public:
     enum type { none, software, hardware };
     ASIO_DECL explicit flow_control(type t = none);
     type value() const;
-    ASIO_DECL clmdep_asio::error_code store(
+    ASIO_DECL ASIO_SYNC_OP_VOID store(
         ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec) const;
-    ASIO_DECL clmdep_asio::error_code load(
+    ASIO_DECL ASIO_SYNC_OP_VOID load(
         const ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec);
   private:
@@ -94,10 +95,10 @@ public:
     enum type { none, odd, even };
     ASIO_DECL explicit parity(type t = none);
     type value() const;
-    ASIO_DECL clmdep_asio::error_code store(
+    ASIO_DECL ASIO_SYNC_OP_VOID store(
         ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec) const;
-    ASIO_DECL clmdep_asio::error_code load(
+    ASIO_DECL ASIO_SYNC_OP_VOID load(
         const ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec);
   private:
@@ -114,10 +115,10 @@ public:
     enum type { one, onepointfive, two };
     ASIO_DECL explicit stop_bits(type t = one);
     type value() const;
-    ASIO_DECL clmdep_asio::error_code store(
+    ASIO_DECL ASIO_SYNC_OP_VOID store(
         ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec) const;
-    ASIO_DECL clmdep_asio::error_code load(
+    ASIO_DECL ASIO_SYNC_OP_VOID load(
         const ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec);
   private:
@@ -133,10 +134,10 @@ public:
   public:
     ASIO_DECL explicit character_size(unsigned int t = 8);
     unsigned int value() const;
-    ASIO_DECL clmdep_asio::error_code store(
+    ASIO_DECL ASIO_SYNC_OP_VOID store(
         ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec) const;
-    ASIO_DECL clmdep_asio::error_code load(
+    ASIO_DECL ASIO_SYNC_OP_VOID load(
         const ASIO_OPTION_STORAGE& storage,
         clmdep_asio::error_code& ec);
   private:
@@ -151,6 +152,7 @@ protected:
 };
 
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

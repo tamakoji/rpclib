@@ -2,7 +2,7 @@
 // detail/posix_thread.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,17 +19,19 @@
 
 #if defined(ASIO_HAS_PTHREADS)
 
+#include <cstddef>
 #include <pthread.h>
 #include "asio/detail/noncopyable.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
 
 extern "C"
 {
-  ASIO_DECL void* clmdep_asio_detail_posix_thread_function(void* arg);
+  ASIO_DECL void* boost_asio_detail_posix_thread_function(void* arg);
 }
 
 class posix_thread
@@ -50,8 +52,11 @@ public:
   // Wait for the thread to exit.
   ASIO_DECL void join();
 
+  // Get number of CPUs.
+  ASIO_DECL static std::size_t hardware_concurrency();
+
 private:
-  friend void* clmdep_asio_detail_posix_thread_function(void* arg);
+  friend void* boost_asio_detail_posix_thread_function(void* arg);
 
   class func_base
   {
@@ -93,6 +98,7 @@ private:
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

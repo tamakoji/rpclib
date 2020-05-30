@@ -2,7 +2,7 @@
 // detail/impl/descriptor_ops.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,6 +25,7 @@
   && !defined(__CYGWIN__)
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -57,14 +58,14 @@ int close(int d, state_type& state, clmdep_asio::error_code& ec)
       // current OS where this behaviour is seen, Windows, says that the socket
       // remains open. Therefore we'll put the descriptor back into blocking
       // mode and have another attempt at closing it.
-#if defined(__SYMBIAN32__)
+#if defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
       int flags = ::fcntl(d, F_GETFL, 0);
       if (flags >= 0)
         ::fcntl(d, F_SETFL, flags & ~O_NONBLOCK);
-#else // defined(__SYMBIAN32__)
+#else // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
       ioctl_arg_type arg = 0;
       ::ioctl(d, FIONBIO, &arg);
-#endif // defined(__SYMBIAN32__)
+#endif // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
       state &= ~non_blocking;
 
       errno = 0;
@@ -87,7 +88,7 @@ bool set_user_non_blocking(int d, state_type& state,
   }
 
   errno = 0;
-#if defined(__SYMBIAN32__)
+#if defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   int result = error_wrapper(::fcntl(d, F_GETFL, 0), ec);
   if (result >= 0)
   {
@@ -95,10 +96,10 @@ bool set_user_non_blocking(int d, state_type& state,
     int flag = (value ? (result | O_NONBLOCK) : (result & ~O_NONBLOCK));
     result = error_wrapper(::fcntl(d, F_SETFL, flag), ec);
   }
-#else // defined(__SYMBIAN32__)
+#else // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   ioctl_arg_type arg = (value ? 1 : 0);
   int result = error_wrapper(::ioctl(d, FIONBIO, &arg), ec);
-#endif // defined(__SYMBIAN32__)
+#endif // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
 
   if (result >= 0)
   {
@@ -137,7 +138,7 @@ bool set_internal_non_blocking(int d, state_type& state,
   }
 
   errno = 0;
-#if defined(__SYMBIAN32__)
+#if defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   int result = error_wrapper(::fcntl(d, F_GETFL, 0), ec);
   if (result >= 0)
   {
@@ -145,10 +146,10 @@ bool set_internal_non_blocking(int d, state_type& state,
     int flag = (value ? (result | O_NONBLOCK) : (result & ~O_NONBLOCK));
     result = error_wrapper(::fcntl(d, F_SETFL, flag), ec);
   }
-#else // defined(__SYMBIAN32__)
+#else // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   ioctl_arg_type arg = (value ? 1 : 0);
   int result = error_wrapper(::ioctl(d, FIONBIO, &arg), ec);
-#endif // defined(__SYMBIAN32__)
+#endif // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
 
   if (result >= 0)
   {
@@ -438,9 +439,33 @@ int poll_write(int d, state_type state, clmdep_asio::error_code& ec)
   return result;
 }
 
+int poll_error(int d, state_type state, clmdep_asio::error_code& ec)
+{
+  if (d == -1)
+  {
+    ec = clmdep_asio::error::bad_descriptor;
+    return -1;
+  }
+
+  pollfd fds;
+  fds.fd = d;
+  fds.events = POLLPRI | POLLERR | POLLHUP;
+  fds.revents = 0;
+  int timeout = (state & user_set_non_blocking) ? 0 : -1;
+  errno = 0;
+  int result = error_wrapper(::poll(&fds, 1, timeout), ec);
+  if (result == 0)
+    ec = (state & user_set_non_blocking)
+      ? clmdep_asio::error::would_block : clmdep_asio::error_code();
+  else if (result > 0)
+    ec = clmdep_asio::error_code();
+  return result;
+}
+
 } // namespace descriptor_ops
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

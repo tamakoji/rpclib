@@ -2,7 +2,7 @@
 // ip/unicast.hpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,6 +21,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace ip {
 namespace unicast {
@@ -32,7 +33,7 @@ namespace unicast {
  * @par Examples
  * Setting the option:
  * @code
- * clmdep_asio::ip::udp::socket socket(io_service); 
+ * clmdep_asio::ip::udp::socket socket(my_context);
  * ...
  * clmdep_asio::ip::unicast::hops option(4);
  * socket.set_option(option);
@@ -41,7 +42,7 @@ namespace unicast {
  * @par
  * Getting the current option value:
  * @code
- * clmdep_asio::ip::udp::socket socket(io_service); 
+ * clmdep_asio::ip::udp::socket socket(my_context);
  * ...
  * clmdep_asio::ip::unicast::hops option;
  * socket.get_option(option);
@@ -64,6 +65,7 @@ typedef clmdep_asio::ip::detail::socket_option::unicast_hops<
 } // namespace unicast
 } // namespace ip
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

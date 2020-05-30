@@ -2,7 +2,7 @@
 // detail/fenced_block.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -20,6 +20,8 @@
 #if !defined(ASIO_HAS_THREADS) \
   || defined(ASIO_DISABLE_FENCED_BLOCK)
 # include "asio/detail/null_fenced_block.hpp"
+#elif defined(ASIO_HAS_STD_ATOMIC)
+# include "asio/detail/std_fenced_block.hpp"
 #elif defined(__MACH__) && defined(__APPLE__)
 # include "asio/detail/macos_fenced_block.hpp"
 #elif defined(__sun)
@@ -42,12 +44,15 @@
 # include "asio/detail/null_fenced_block.hpp"
 #endif
 
+
 namespace clmdep_asio {
 namespace detail {
 
 #if !defined(ASIO_HAS_THREADS) \
   || defined(ASIO_DISABLE_FENCED_BLOCK)
 typedef null_fenced_block fenced_block;
+#elif defined(ASIO_HAS_STD_ATOMIC)
+typedef std_fenced_block fenced_block;
 #elif defined(__MACH__) && defined(__APPLE__)
 typedef macos_fenced_block fenced_block;
 #elif defined(__sun)
@@ -72,5 +77,6 @@ typedef null_fenced_block fenced_block;
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #endif // ASIO_DETAIL_FENCED_BLOCK_HPP

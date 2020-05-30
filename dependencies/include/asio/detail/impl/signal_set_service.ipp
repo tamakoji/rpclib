@@ -2,7 +2,7 @@
 // detail/impl/signal_set_service.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -18,12 +18,15 @@
 #include "asio/detail/config.hpp"
 
 #include <cstring>
+#include <stdexcept>
 #include "asio/detail/reactor.hpp"
 #include "asio/detail/signal_blocker.hpp"
 #include "asio/detail/signal_set_service.hpp"
 #include "asio/detail/static_mutex.hpp"
+#include "asio/detail/throw_exception.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -56,7 +59,7 @@ signal_state* get_signal_state()
   return &state;
 }
 
-void clmdep_asio_signal_handler(int signal_number)
+void boost_asio_signal_handler(int signal_number)
 {
 #if defined(ASIO_WINDOWS) \
   || defined(ASIO_WINDOWS_RUNTIME) \
@@ -76,7 +79,7 @@ void clmdep_asio_signal_handler(int signal_number)
        //   || defined(__CYGWIN__)
 
 #if defined(ASIO_HAS_SIGNAL) && !defined(ASIO_HAS_SIGACTION)
-  ::signal(signal_number, clmdep_asio_signal_handler);
+  ::signal(signal_number, boost_asio_signal_handler);
 #endif // defined(ASIO_HAS_SIGNAL) && !defined(ASIO_HAS_SIGACTION)
 }
 
@@ -91,7 +94,7 @@ public:
   {
   }
 
-  static bool do_perform(reactor_op*)
+  static status do_perform(reactor_op*)
   {
     signal_state* state = get_signal_state();
 
@@ -101,10 +104,10 @@ public:
       if (signal_number >= 0 && signal_number < max_signal_number)
         signal_set_service::deliver_signal(signal_number);
 
-    return false;
+    return not_done;
   }
 
-  static void do_complete(io_service_impl* /*owner*/, operation* base,
+  static void do_complete(void* /*owner*/, operation* base,
       const clmdep_asio::error_code& /*ec*/,
       std::size_t /*bytes_transferred*/)
   {
@@ -116,13 +119,13 @@ public:
        //   && !defined(ASIO_WINDOWS_RUNTIME)
        //   && !defined(__CYGWIN__)
 
-signal_set_service::signal_set_service(
-    clmdep_asio::io_service& io_service)
-  : io_service_(clmdep_asio::use_service<io_service_impl>(io_service)),
+signal_set_service::signal_set_service(execution_context& context)
+  : execution_context_service_base<signal_set_service>(context),
+    scheduler_(clmdep_asio::use_service<scheduler_impl>(context)),
 #if !defined(ASIO_WINDOWS) \
   && !defined(ASIO_WINDOWS_RUNTIME) \
   && !defined(__CYGWIN__)
-    reactor_(clmdep_asio::use_service<reactor>(io_service)),
+    reactor_(clmdep_asio::use_service<reactor>(context)),
 #endif // !defined(ASIO_WINDOWS)
        //   && !defined(ASIO_WINDOWS_RUNTIME)
        //   && !defined(__CYGWIN__)
@@ -150,7 +153,7 @@ signal_set_service::~signal_set_service()
   remove_service(this);
 }
 
-void signal_set_service::shutdown_service()
+void signal_set_service::shutdown()
 {
   remove_service(this);
 
@@ -166,11 +169,10 @@ void signal_set_service::shutdown_service()
     }
   }
 
-  io_service_.abandon_operations(ops);
+  scheduler_.abandon_operations(ops);
 }
 
-void signal_set_service::fork_service(
-    clmdep_asio::io_service::fork_event fork_ev)
+void signal_set_service::notify_fork(execution_context::fork_event fork_ev)
 {
 #if !defined(ASIO_WINDOWS) \
   && !defined(ASIO_WINDOWS_RUNTIME) \
@@ -180,15 +182,16 @@ void signal_set_service::fork_service(
 
   switch (fork_ev)
   {
-  case clmdep_asio::io_service::fork_prepare:
+  case execution_context::fork_prepare:
     {
       int read_descriptor = state->read_descriptor_;
       state->fork_prepared_ = true;
       lock.unlock();
       reactor_.deregister_internal_descriptor(read_descriptor, reactor_data_);
+      reactor_.cleanup_descriptor_data(reactor_data_);
     }
     break;
-  case clmdep_asio::io_service::fork_parent:
+  case execution_context::fork_parent:
     if (state->fork_prepared_)
     {
       int read_descriptor = state->read_descriptor_;
@@ -198,7 +201,7 @@ void signal_set_service::fork_service(
           read_descriptor, reactor_data_, new pipe_read_op);
     }
     break;
-  case clmdep_asio::io_service::fork_child:
+  case execution_context::fork_child:
     if (state->fork_prepared_)
     {
       clmdep_asio::detail::signal_blocker blocker;
@@ -273,11 +276,11 @@ clmdep_asio::error_code signal_set_service::add(
       using namespace std; // For memset.
       struct sigaction sa;
       memset(&sa, 0, sizeof(sa));
-      sa.sa_handler = clmdep_asio_signal_handler;
+      sa.sa_handler = boost_asio_signal_handler;
       sigfillset(&sa.sa_mask);
       if (::sigaction(signal_number, &sa, 0) == -1)
 # else // defined(ASIO_HAS_SIGACTION)
-      if (::signal(signal_number, clmdep_asio_signal_handler) == SIG_ERR)
+      if (::signal(signal_number, boost_asio_signal_handler) == SIG_ERR)
 # endif // defined(ASIO_HAS_SIGACTION)
       {
 # if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
@@ -437,7 +440,8 @@ clmdep_asio::error_code signal_set_service::cancel(
     signal_set_service::implementation_type& impl,
     clmdep_asio::error_code& ec)
 {
-  ASIO_HANDLER_OPERATION(("signal_set", &impl, "cancel"));
+  ASIO_HANDLER_OPERATION((scheduler_.context(),
+        "signal_set", &impl, 0, "cancel"));
 
   op_queue<operation> ops;
   {
@@ -452,7 +456,7 @@ clmdep_asio::error_code signal_set_service::cancel(
     }
   }
 
-  io_service_.post_deferred_completions(ops);
+  scheduler_.post_deferred_completions(ops);
 
   ec = clmdep_asio::error_code();
   return ec;
@@ -488,7 +492,7 @@ void signal_set_service::deliver_signal(int signal_number)
       reg = reg->next_in_table_;
     }
 
-    service->io_service_.post_deferred_completions(ops);
+    service->scheduler_.post_deferred_completions(ops);
 
     service = service->next_;
   }
@@ -504,6 +508,22 @@ void signal_set_service::add_service(signal_set_service* service)
   if (state->service_list_ == 0)
     open_descriptors();
 #endif // !defined(ASIO_WINDOWS) && !defined(__CYGWIN__)
+
+  // If a scheduler_ object is thread-unsafe then it must be the only
+  // scheduler used to create signal_set objects.
+  if (state->service_list_ != 0)
+  {
+    if (!ASIO_CONCURRENCY_HINT_IS_LOCKING(SCHEDULER,
+          service->scheduler_.concurrency_hint())
+        || !ASIO_CONCURRENCY_HINT_IS_LOCKING(SCHEDULER,
+          state->service_list_->scheduler_.concurrency_hint()))
+    {
+      std::logic_error ex(
+          "Thread-unsafe execution context objects require "
+          "exclusive access to signal handling.");
+      clmdep_asio::detail::throw_exception(ex);
+    }
+  }
 
   // Insert service into linked list of all services.
   service->next_ = state->service_list_;
@@ -538,8 +558,9 @@ void signal_set_service::remove_service(signal_set_service* service)
     // Disable the pipe readiness notifications.
     int read_descriptor = state->read_descriptor_;
     lock.unlock();
-    service->reactor_.deregister_descriptor(
-        read_descriptor, service->reactor_data_, false);
+    service->reactor_.deregister_internal_descriptor(
+        read_descriptor, service->reactor_data_);
+    service->reactor_.cleanup_descriptor_data(service->reactor_data_);
     lock.lock();
 #endif // !defined(ASIO_WINDOWS)
        //   && !defined(ASIO_WINDOWS_RUNTIME)
@@ -617,7 +638,7 @@ void signal_set_service::close_descriptors()
 void signal_set_service::start_wait_op(
     signal_set_service::implementation_type& impl, signal_op* op)
 {
-  io_service_.work_started();
+  scheduler_.work_started();
 
   signal_state* state = get_signal_state();
   static_mutex::scoped_lock lock(state->mutex_);
@@ -629,7 +650,7 @@ void signal_set_service::start_wait_op(
     {
       --reg->undelivered_;
       op->signal_number_ = reg->signal_number_;
-      io_service_.post_deferred_completion(op);
+      scheduler_.post_deferred_completion(op);
       return;
     }
 
@@ -641,6 +662,7 @@ void signal_set_service::start_wait_op(
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

@@ -8,10 +8,12 @@ project(server)
 #set(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/../../cmake")
 
 find_package(rpclib REQUIRED)
+find_package(Threads REQUIRED)
 
 include_directories(${RPCLIB_INCLUDE_DIR})
 
 add_executable(server main.cc)
 target_link_libraries(server ${RPCLIB_LIBS})
+target_link_libraries(server Threads::Threads)
 set_property(TARGET server PROPERTY CXX_STANDARD 14)
 

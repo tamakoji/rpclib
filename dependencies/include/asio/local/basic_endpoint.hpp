@@ -2,7 +2,7 @@
 // local/basic_endpoint.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 // Derived from a public domain implementation written by Daniel Casimiro.
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
@@ -28,6 +28,7 @@
 #endif // !defined(ASIO_NO_IOSTREAM)
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace local {
@@ -60,7 +61,7 @@ public:
 #endif
 
   /// Default constructor.
-  basic_endpoint()
+  basic_endpoint() ASIO_NOEXCEPT
   {
   }
 
@@ -75,6 +76,14 @@ public:
     : impl_(path_name)
   {
   }
+
+  #if defined(ASIO_HAS_STRING_VIEW)
+  /// Construct an endpoint using the specified path name.
+  basic_endpoint(string_view path_name)
+    : impl_(path_name)
+  {
+  }
+  #endif // defined(ASIO_HAS_STRING_VIEW)
 
   /// Copy constructor.
   basic_endpoint(const basic_endpoint& other)
@@ -230,6 +239,7 @@ std::basic_ostream<Elem, Traits>& operator<<(
 
 } // namespace local
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

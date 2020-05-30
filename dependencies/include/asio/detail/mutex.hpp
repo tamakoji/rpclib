@@ -2,7 +2,7 @@
 // detail/mutex.hpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -29,6 +29,7 @@
 # error Only Windows, POSIX and std::mutex are supported!
 #endif
 
+
 namespace clmdep_asio {
 namespace detail {
 
@@ -44,5 +45,6 @@ typedef std_mutex mutex;
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #endif // ASIO_DETAIL_MUTEX_HPP

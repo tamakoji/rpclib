@@ -2,7 +2,7 @@
 // detail/impl/socket_ops.ipp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -42,6 +42,7 @@
        // || defined(__MACH__) && defined(__APPLE__)
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -168,7 +169,7 @@ socket_type sync_accept(socket_type s, state_type state,
       return invalid_socket;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_read(s, 0, ec) < 0)
+    if (socket_ops::poll_read(s, 0, -1, ec) < 0)
       return invalid_socket;
   }
 }
@@ -241,8 +242,6 @@ bool non_blocking_accept(socket_type s,
     if (ec == clmdep_asio::error::would_block
         || ec == clmdep_asio::error::try_again)
     {
-      if (state & user_set_non_blocking)
-        return true;
       // Fall through to retry operation.
     }
     else if (ec == clmdep_asio::error::connection_aborted)
@@ -332,14 +331,14 @@ int close(socket_type s, state_type& state,
       ioctl_arg_type arg = 0;
       ::ioctlsocket(s, FIONBIO, &arg);
 #else // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
-# if defined(__SYMBIAN32__)
+# if defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
       int flags = ::fcntl(s, F_GETFL, 0);
       if (flags >= 0)
         ::fcntl(s, F_SETFL, flags & ~O_NONBLOCK);
-# else // defined(__SYMBIAN32__)
+# else // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
       ioctl_arg_type arg = 0;
       ::ioctl(s, FIONBIO, &arg);
-# endif // defined(__SYMBIAN32__)
+# endif // defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
 #endif // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
       state &= ~non_blocking;
 
@@ -370,7 +369,7 @@ bool set_user_non_blocking(socket_type s,
 #if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
   ioctl_arg_type arg = (value ? 1 : 0);
   int result = error_wrapper(::ioctlsocket(s, FIONBIO, &arg), ec);
-#elif defined(__SYMBIAN32__)
+#elif defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   int result = error_wrapper(::fcntl(s, F_GETFL, 0), ec);
   if (result >= 0)
   {
@@ -423,7 +422,7 @@ bool set_internal_non_blocking(socket_type s,
 #if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
   ioctl_arg_type arg = (value ? 1 : 0);
   int result = error_wrapper(::ioctlsocket(s, FIONBIO, &arg), ec);
-#elif defined(__SYMBIAN32__)
+#elif defined(__SYMBIAN32__) || defined(__EMSCRIPTEN__)
   int result = error_wrapper(::fcntl(s, F_GETFL, 0), ec);
   if (result >= 0)
   {
@@ -505,7 +504,7 @@ void sync_connect(socket_type s, const socket_addr_type* addr,
   }
 
   // Wait for socket to become ready.
-  if (socket_ops::poll_connect(s, ec) < 0)
+  if (socket_ops::poll_connect(s, -1, ec) < 0)
     return;
 
   // Get the error code from the connect operation.
@@ -772,6 +771,8 @@ signed_size_type recv(socket_type s, buf* bufs, size_t count,
     ec = clmdep_asio::error::connection_reset;
   else if (ec.value() == ERROR_PORT_UNREACHABLE)
     ec = clmdep_asio::error::connection_refused;
+  else if (ec.value() == WSAEMSGSIZE || ec.value() == ERROR_MORE_DATA)
+    result = 0;
   if (result != 0)
     return socket_error_retval;
   ec = clmdep_asio::error_code();
@@ -827,7 +828,7 @@ size_t sync_recv(socket_type s, state_type state, buf* bufs,
       return 0;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_read(s, 0, ec) < 0)
+    if (socket_ops::poll_read(s, 0, -1, ec) < 0)
       return 0;
   }
 }
@@ -849,6 +850,10 @@ void complete_iocp_recv(state_type state,
   else if (ec.value() == ERROR_PORT_UNREACHABLE)
   {
     ec = clmdep_asio::error::connection_refused;
+  }
+  else if (ec.value() == WSAEMSGSIZE || ec.value() == ERROR_MORE_DATA)
+  {
+    ec.assign(0, ec.category());
   }
 
   // Check for connection closed.
@@ -920,6 +925,8 @@ signed_size_type recvfrom(socket_type s, buf* bufs, size_t count,
     ec = clmdep_asio::error::connection_reset;
   else if (ec.value() == ERROR_PORT_UNREACHABLE)
     ec = clmdep_asio::error::connection_refused;
+  else if (ec.value() == WSAEMSGSIZE || ec.value() == ERROR_MORE_DATA)
+    result = 0;
   if (result != 0)
     return socket_error_retval;
   ec = clmdep_asio::error_code();
@@ -966,7 +973,7 @@ size_t sync_recvfrom(socket_type s, state_type state, buf* bufs,
       return 0;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_read(s, 0, ec) < 0)
+    if (socket_ops::poll_read(s, 0, -1, ec) < 0)
       return 0;
   }
 }
@@ -988,6 +995,10 @@ void complete_iocp_recvfrom(
   else if (ec.value() == ERROR_PORT_UNREACHABLE)
   {
     ec = clmdep_asio::error::connection_refused;
+  }
+  else if (ec.value() == WSAEMSGSIZE || ec.value() == ERROR_MORE_DATA)
+  {
+    ec.assign(0, ec.category());
   }
 }
 
@@ -1079,7 +1090,7 @@ size_t sync_recvmsg(socket_type s, state_type state,
       return 0;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_read(s, 0, ec) < 0)
+    if (socket_ops::poll_read(s, 0, -1, ec) < 0)
       return 0;
   }
 }
@@ -1101,6 +1112,10 @@ void complete_iocp_recvmsg(
   else if (ec.value() == ERROR_PORT_UNREACHABLE)
   {
     ec = clmdep_asio::error::connection_refused;
+  }
+  else if (ec.value() == WSAEMSGSIZE || ec.value() == ERROR_MORE_DATA)
+  {
+    ec.assign(0, ec.category());
   }
 }
 
@@ -1206,7 +1221,7 @@ size_t sync_send(socket_type s, state_type state, const buf* bufs,
       return 0;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_write(s, 0, ec) < 0)
+    if (socket_ops::poll_write(s, 0, -1, ec) < 0)
       return 0;
   }
 }
@@ -1330,7 +1345,7 @@ size_t sync_sendto(socket_type s, state_type state, const buf* bufs,
       return 0;
 
     // Wait for socket to become ready.
-    if (socket_ops::poll_write(s, 0, ec) < 0)
+    if (socket_ops::poll_write(s, 0, -1, ec) < 0)
       return 0;
   }
 }
@@ -1488,7 +1503,8 @@ int setsockopt(socket_type s, state_type& state, int level, int optname,
     ec = clmdep_asio::error_code();
 
 #if defined(__MACH__) && defined(__APPLE__) \
-  || defined(__NetBSD__) || defined(__FreeBSD__) || defined(__OpenBSD__)
+  || defined(__NetBSD__) || defined(__FreeBSD__) \
+  || defined(__OpenBSD__) || defined(__QNX__)
     // To implement portable behaviour for SO_REUSEADDR with UDP sockets we
     // need to also set SO_REUSEPORT on BSD-based platforms.
     if ((state & datagram_oriented)
@@ -1633,7 +1649,8 @@ int getpeername(socket_type s, socket_addr_type* addr,
     return socket_error_retval;
   }
 
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(ASIO_WINDOWS) && !defined(ASIO_WINDOWS_APP) \
+  || defined(__CYGWIN__)
   if (cached)
   {
     // Check if socket is still connected.
@@ -1654,9 +1671,11 @@ int getpeername(socket_type s, socket_addr_type* addr,
     ec = clmdep_asio::error_code();
     return 0;
   }
-#else // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#else // defined(ASIO_WINDOWS) && !defined(ASIO_WINDOWS_APP)
+      // || defined(__CYGWIN__)
   (void)cached;
-#endif // defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#endif // defined(ASIO_WINDOWS) && !defined(ASIO_WINDOWS_APP)
+       // || defined(__CYGWIN__)
 
   clear_last_error();
   int result = error_wrapper(call_getpeername(
@@ -1744,6 +1763,9 @@ int select(int nfds, fd_set* readfds, fd_set* writefds,
     fd_set* exceptfds, timeval* timeout, clmdep_asio::error_code& ec)
 {
   clear_last_error();
+#if defined(__EMSCRIPTEN__)
+  exceptfds = 0;
+#endif // defined(__EMSCRIPTEN__)
 #if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
   if (!readfds && !writefds && !exceptfds && timeout)
   {
@@ -1781,7 +1803,8 @@ int select(int nfds, fd_set* readfds, fd_set* writefds,
 #endif
 }
 
-int poll_read(socket_type s, state_type state, clmdep_asio::error_code& ec)
+int poll_read(socket_type s, state_type state,
+    int msec, clmdep_asio::error_code& ec)
 {
   if (s == invalid_socket)
   {
@@ -1795,10 +1818,22 @@ int poll_read(socket_type s, state_type state, clmdep_asio::error_code& ec)
   fd_set fds;
   FD_ZERO(&fds);
   FD_SET(s, &fds);
-  timeval zero_timeout;
-  zero_timeout.tv_sec = 0;
-  zero_timeout.tv_usec = 0;
-  timeval* timeout = (state & user_set_non_blocking) ? &zero_timeout : 0;
+  timeval timeout_obj;
+  timeval* timeout;
+  if (state & user_set_non_blocking)
+  {
+    timeout_obj.tv_sec = 0;
+    timeout_obj.tv_usec = 0;
+    timeout = &timeout_obj;
+  }
+  else if (msec >= 0)
+  {
+    timeout_obj.tv_sec = msec / 1000;
+    timeout_obj.tv_usec = (msec % 1000) * 1000;
+    timeout = &timeout_obj;
+  }
+  else
+    timeout = 0;
   clear_last_error();
   int result = error_wrapper(::select(s + 1, &fds, 0, 0, timeout), ec);
 #else // defined(ASIO_WINDOWS)
@@ -1808,7 +1843,7 @@ int poll_read(socket_type s, state_type state, clmdep_asio::error_code& ec)
   fds.fd = s;
   fds.events = POLLIN;
   fds.revents = 0;
-  int timeout = (state & user_set_non_blocking) ? 0 : -1;
+  int timeout = (state & user_set_non_blocking) ? 0 : msec;
   clear_last_error();
   int result = error_wrapper(::poll(&fds, 1, timeout), ec);
 #endif // defined(ASIO_WINDOWS)
@@ -1822,7 +1857,8 @@ int poll_read(socket_type s, state_type state, clmdep_asio::error_code& ec)
   return result;
 }
 
-int poll_write(socket_type s, state_type state, clmdep_asio::error_code& ec)
+int poll_write(socket_type s, state_type state,
+    int msec, clmdep_asio::error_code& ec)
 {
   if (s == invalid_socket)
   {
@@ -1836,10 +1872,22 @@ int poll_write(socket_type s, state_type state, clmdep_asio::error_code& ec)
   fd_set fds;
   FD_ZERO(&fds);
   FD_SET(s, &fds);
-  timeval zero_timeout;
-  zero_timeout.tv_sec = 0;
-  zero_timeout.tv_usec = 0;
-  timeval* timeout = (state & user_set_non_blocking) ? &zero_timeout : 0;
+  timeval timeout_obj;
+  timeval* timeout;
+  if (state & user_set_non_blocking)
+  {
+    timeout_obj.tv_sec = 0;
+    timeout_obj.tv_usec = 0;
+    timeout = &timeout_obj;
+  }
+  else if (msec >= 0)
+  {
+    timeout_obj.tv_sec = msec / 1000;
+    timeout_obj.tv_usec = (msec % 1000) * 1000;
+    timeout = &timeout_obj;
+  }
+  else
+    timeout = 0;
   clear_last_error();
   int result = error_wrapper(::select(s + 1, 0, &fds, 0, timeout), ec);
 #else // defined(ASIO_WINDOWS)
@@ -1849,7 +1897,7 @@ int poll_write(socket_type s, state_type state, clmdep_asio::error_code& ec)
   fds.fd = s;
   fds.events = POLLOUT;
   fds.revents = 0;
-  int timeout = (state & user_set_non_blocking) ? 0 : -1;
+  int timeout = (state & user_set_non_blocking) ? 0 : msec;
   clear_last_error();
   int result = error_wrapper(::poll(&fds, 1, timeout), ec);
 #endif // defined(ASIO_WINDOWS)
@@ -1863,7 +1911,61 @@ int poll_write(socket_type s, state_type state, clmdep_asio::error_code& ec)
   return result;
 }
 
-int poll_connect(socket_type s, clmdep_asio::error_code& ec)
+int poll_error(socket_type s, state_type state,
+    int msec, clmdep_asio::error_code& ec)
+{
+  if (s == invalid_socket)
+  {
+    ec = clmdep_asio::error::bad_descriptor;
+    return socket_error_retval;
+  }
+
+#if defined(ASIO_WINDOWS) \
+  || defined(__CYGWIN__) \
+  || defined(__SYMBIAN32__)
+  fd_set fds;
+  FD_ZERO(&fds);
+  FD_SET(s, &fds);
+  timeval timeout_obj;
+  timeval* timeout;
+  if (state & user_set_non_blocking)
+  {
+    timeout_obj.tv_sec = 0;
+    timeout_obj.tv_usec = 0;
+    timeout = &timeout_obj;
+  }
+  else if (msec >= 0)
+  {
+    timeout_obj.tv_sec = msec / 1000;
+    timeout_obj.tv_usec = (msec % 1000) * 1000;
+    timeout = &timeout_obj;
+  }
+  else
+    timeout = 0;
+  clear_last_error();
+  int result = error_wrapper(::select(s + 1, 0, 0, &fds, timeout), ec);
+#else // defined(ASIO_WINDOWS)
+      // || defined(__CYGWIN__)
+      // || defined(__SYMBIAN32__)
+  pollfd fds;
+  fds.fd = s;
+  fds.events = POLLPRI | POLLERR | POLLHUP;
+  fds.revents = 0;
+  int timeout = (state & user_set_non_blocking) ? 0 : msec;
+  clear_last_error();
+  int result = error_wrapper(::poll(&fds, 1, timeout), ec);
+#endif // defined(ASIO_WINDOWS)
+       // || defined(__CYGWIN__)
+       // || defined(__SYMBIAN32__)
+  if (result == 0)
+    ec = (state & user_set_non_blocking)
+      ? clmdep_asio::error::would_block : clmdep_asio::error_code();
+  else if (result > 0)
+    ec = clmdep_asio::error_code();
+  return result;
+}
+
+int poll_connect(socket_type s, int msec, clmdep_asio::error_code& ec)
 {
   if (s == invalid_socket)
   {
@@ -1880,9 +1982,19 @@ int poll_connect(socket_type s, clmdep_asio::error_code& ec)
   fd_set except_fds;
   FD_ZERO(&except_fds);
   FD_SET(s, &except_fds);
+  timeval timeout_obj;
+  timeval* timeout;
+  if (msec >= 0)
+  {
+    timeout_obj.tv_sec = msec / 1000;
+    timeout_obj.tv_usec = (msec % 1000) * 1000;
+    timeout = &timeout_obj;
+  }
+  else
+    timeout = 0;
   clear_last_error();
   int result = error_wrapper(::select(
-        s + 1, 0, &write_fds, &except_fds, 0), ec);
+        s + 1, 0, &write_fds, &except_fds, timeout), ec);
   if (result >= 0)
     ec = clmdep_asio::error_code();
   return result;
@@ -1894,7 +2006,7 @@ int poll_connect(socket_type s, clmdep_asio::error_code& ec)
   fds.events = POLLOUT;
   fds.revents = 0;
   clear_last_error();
-  int result = error_wrapper(::poll(&fds, 1, -1), ec);
+  int result = error_wrapper(::poll(&fds, 1, msec), ec);
   if (result >= 0)
     ec = clmdep_asio::error_code();
   return result;
@@ -2007,7 +2119,7 @@ const char* inet_ntop(int af, const void* src, char* dest, size_t length,
   if (result != 0 && af == ASIO_OS_DEF(AF_INET6) && scope_id != 0)
   {
     using namespace std; // For strcat and sprintf.
-    char if_name[IF_NAMESIZE + 1] = "%";
+    char if_name[(IF_NAMESIZE > 21 ? IF_NAMESIZE : 21) + 1] = "%";
     const in6_addr_type* ipv6_address = static_cast<const in6_addr_type*>(src);
     bool is_link_local = ((ipv6_address->s6_addr[0] == 0xfe)
         && ((ipv6_address->s6_addr[1] & 0xc0) == 0x80));
@@ -2580,7 +2692,8 @@ inline void gai_strcpy(char* target, const char* source, std::size_t max_size)
   strcpy_s(target, max_size, source);
 #else // defined(ASIO_HAS_SECURE_RTL)
   *target = 0;
-  strncat(target, source, max_size);
+  if (max_size > 0)
+    strncat(target, source, max_size - 1);
 #endif // defined(ASIO_HAS_SECURE_RTL)
 }
 
@@ -3233,6 +3346,37 @@ clmdep_asio::error_code getaddrinfo(const char* host,
   return ec = translate_addrinfo_error(error);
 #else
   int error = ::getaddrinfo(host, service, &hints, result);
+#if defined(__MACH__) && defined(__APPLE__)
+  using namespace std; // For isdigit and atoi.
+  if (error == 0 && service && isdigit(static_cast<unsigned char>(service[0])))
+  {
+    u_short_type port = host_to_network_short(atoi(service));
+    for (addrinfo_type* ai = *result; ai; ai = ai->ai_next)
+    {
+      switch (ai->ai_family)
+      {
+      case ASIO_OS_DEF(AF_INET):
+        {
+          sockaddr_in4_type* sinptr =
+            reinterpret_cast<sockaddr_in4_type*>(ai->ai_addr);
+          if (sinptr->sin_port == 0)
+            sinptr->sin_port = port;
+          break;
+        }
+      case ASIO_OS_DEF(AF_INET6):
+        {
+          sockaddr_in6_type* sin6ptr =
+            reinterpret_cast<sockaddr_in6_type*>(ai->ai_addr);
+          if (sin6ptr->sin6_port == 0)
+            sin6ptr->sin6_port = port;
+          break;
+        }
+      default:
+        break;
+      }
+    }
+  }
+#endif
   return ec = translate_addrinfo_error(error);
 #endif
 }
@@ -3310,7 +3454,6 @@ clmdep_asio::error_code getnameinfo(const socket_addr_type* addr,
   using namespace std; // For memcpy.
   sockaddr_storage_type tmp_addr;
   memcpy(&tmp_addr, addr, addrlen);
-  tmp_addr.ss_len = addrlen;
   addr = reinterpret_cast<socket_addr_type*>(&tmp_addr);
   clear_last_error();
   return getnameinfo_emulation(addr, addrlen,
@@ -3427,6 +3570,7 @@ u_short_type host_to_network_short(u_short_type value)
 } // namespace socket_ops
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

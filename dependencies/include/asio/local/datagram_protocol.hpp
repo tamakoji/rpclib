@@ -2,7 +2,7 @@
 // local/datagram_protocol.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -26,6 +26,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace local {
 
@@ -45,19 +46,19 @@ class datagram_protocol
 {
 public:
   /// Obtain an identifier for the type of the protocol.
-  int type() const
+  int type() const ASIO_NOEXCEPT
   {
     return SOCK_DGRAM;
   }
 
   /// Obtain an identifier for the protocol.
-  int protocol() const
+  int protocol() const ASIO_NOEXCEPT
   {
     return 0;
   }
 
   /// Obtain an identifier for the protocol family.
-  int family() const
+  int family() const ASIO_NOEXCEPT
   {
     return AF_UNIX;
   }
@@ -71,6 +72,7 @@ public:
 
 } // namespace local
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

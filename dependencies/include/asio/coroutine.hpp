@@ -2,7 +2,7 @@
 // coroutine.hpp
 // ~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -10,6 +10,7 @@
 
 #ifndef ASIO_COROUTINE_HPP
 #define ASIO_COROUTINE_HPP
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -48,11 +49,11 @@ class coroutine_ref;
  * A coroutine is used in conjunction with certain "pseudo-keywords", which
  * are implemented as macros. These macros are defined by a header file:
  *
- * @code #include <asio/yield.hpp>@endcode
+ * @code #include "asio/yield.hpp"@endcode
  *
  * and may conversely be undefined as follows:
  *
- * @code #include <asio/unyield.hpp>@endcode
+ * @code #include "asio/unyield.hpp"@endcode
  *
  * <b>reenter</b>
  *
@@ -205,7 +206,7 @@ class coroutine_ref;
  * {
  *   do
  *   {
- *     socket_.reset(new tcp::socket(io_service_));
+ *     socket_.reset(new tcp::socket(my_context_));
  *     yield acceptor->async_accept(*socket_, *this);
  *     fork server(*this)();
  *   } while (is_parent());
@@ -227,7 +228,7 @@ class coroutine_ref;
  * Note that @c fork doesn't do the actual forking by itself. It is the
  * application's responsibility to create a clone of the coroutine and call it.
  * The clone can be called immediately, as above, or scheduled for delayed
- * execution using something like io_service::post().
+ * execution using something like clmdep_asio::post().
  *
  * @par Alternate macro names
  *
@@ -278,6 +279,7 @@ private:
 } // namespace detail
 } // namespace clmdep_asio
 
+
 #define ASIO_CORO_REENTER(c) \
   switch (::clmdep_asio::detail::coroutine_ref _coro_value = c) \
     case -1: if (_coro_value) \
@@ -289,7 +291,7 @@ private:
       bail_out_of_coroutine: \
       break; \
     } \
-    else case 0:
+    else /* fall-through */ case 0:
 
 #define ASIO_CORO_YIELD_IMPL(n) \
   for (_coro_value = (n);;) \
@@ -301,12 +303,12 @@ private:
     else \
       switch (_coro_value ? 0 : 1) \
         for (;;) \
-          case -1: if (_coro_value) \
+          /* fall-through */ case -1: if (_coro_value) \
             goto terminate_coroutine; \
           else for (;;) \
-            case 1: if (_coro_value) \
+            /* fall-through */ case 1: if (_coro_value) \
               goto bail_out_of_coroutine; \
-            else case 0:
+            else /* fall-through */ case 0:
 
 #define ASIO_CORO_FORK_IMPL(n) \
   for (_coro_value = -(n);; _coro_value = (n)) \

@@ -2,7 +2,7 @@
 // detail/completion_handler.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -15,14 +15,15 @@
 # pragma once
 #endif // defined(_MSC_VER) && (_MSC_VER >= 1200)
 
-#include "asio/detail/addressof.hpp"
 #include "asio/detail/config.hpp"
 #include "asio/detail/fenced_block.hpp"
 #include "asio/detail/handler_alloc_helpers.hpp"
-#include "asio/detail/handler_invoke_helpers.hpp"
+#include "asio/detail/handler_work.hpp"
+#include "asio/detail/memory.hpp"
 #include "asio/detail/operation.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace detail {
@@ -37,17 +38,19 @@ public:
     : operation(&completion_handler::do_complete),
       handler_(ASIO_MOVE_CAST(Handler)(h))
   {
+    handler_work<Handler>::start(handler_);
   }
 
-  static void do_complete(io_service_impl* owner, operation* base,
+  static void do_complete(void* owner, operation* base,
       const clmdep_asio::error_code& /*ec*/,
       std::size_t /*bytes_transferred*/)
   {
     // Take ownership of the handler object.
     completion_handler* h(static_cast<completion_handler*>(base));
     ptr p = { clmdep_asio::detail::addressof(h->handler_), h, h };
+    handler_work<Handler> w(h->handler_);
 
-    ASIO_HANDLER_COMPLETION((h));
+    ASIO_HANDLER_COMPLETION((*h));
 
     // Make a copy of the handler so that the memory can be deallocated before
     // the upcall is made. Even if we're not about to make an upcall, a
@@ -64,7 +67,7 @@ public:
     {
       fenced_block b(fenced_block::half);
       ASIO_HANDLER_INVOCATION_BEGIN(());
-      clmdep_asio_handler_invoke_helpers::invoke(handler, handler);
+      w.complete(handler, handler);
       ASIO_HANDLER_INVOCATION_END;
     }
   }
@@ -75,6 +78,7 @@ private:
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

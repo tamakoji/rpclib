@@ -2,7 +2,7 @@
 // ip/tcp.hpp
 // ~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -28,6 +28,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace ip {
 
@@ -49,31 +50,31 @@ public:
   typedef basic_endpoint<tcp> endpoint;
 
   /// Construct to represent the IPv4 TCP protocol.
-  static tcp v4()
+  static tcp v4() ASIO_NOEXCEPT
   {
     return tcp(ASIO_OS_DEF(AF_INET));
   }
 
   /// Construct to represent the IPv6 TCP protocol.
-  static tcp v6()
+  static tcp v6() ASIO_NOEXCEPT
   {
     return tcp(ASIO_OS_DEF(AF_INET6));
   }
 
   /// Obtain an identifier for the type of the protocol.
-  int type() const
+  int type() const ASIO_NOEXCEPT
   {
     return ASIO_OS_DEF(SOCK_STREAM);
   }
 
   /// Obtain an identifier for the protocol.
-  int protocol() const
+  int protocol() const ASIO_NOEXCEPT
   {
     return ASIO_OS_DEF(IPPROTO_TCP);
   }
 
   /// Obtain an identifier for the protocol family.
-  int family() const
+  int family() const ASIO_NOEXCEPT
   {
     return family_;
   }
@@ -99,7 +100,7 @@ public:
    * @par Examples
    * Setting the option:
    * @code
-   * clmdep_asio::ip::tcp::socket socket(io_service); 
+   * clmdep_asio::ip::tcp::socket socket(my_context);
    * ...
    * clmdep_asio::ip::tcp::no_delay option(true);
    * socket.set_option(option);
@@ -108,7 +109,7 @@ public:
    * @par
    * Getting the current option value:
    * @code
-   * clmdep_asio::ip::tcp::socket socket(io_service); 
+   * clmdep_asio::ip::tcp::socket socket(my_context);
    * ...
    * clmdep_asio::ip::tcp::no_delay option;
    * socket.get_option(option);
@@ -139,7 +140,7 @@ public:
 
 private:
   // Construct with a specific family.
-  explicit tcp(int protocol_family)
+  explicit tcp(int protocol_family) ASIO_NOEXCEPT
     : family_(protocol_family)
   {
   }
@@ -149,6 +150,7 @@ private:
 
 } // namespace ip
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

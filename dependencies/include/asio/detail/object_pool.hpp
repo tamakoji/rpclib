@@ -2,7 +2,7 @@
 // detail/object_pool.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -19,6 +19,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace detail {
 
@@ -32,6 +33,12 @@ public:
   static Object* create()
   {
     return new Object;
+  }
+
+  template <typename Object, typename Arg>
+  static Object* create(Arg arg)
+  {
+    return new Object(arg);
   }
 
   template <typename Object>
@@ -96,6 +103,25 @@ public:
     return o;
   }
 
+  // Allocate a new object with an argument.
+  template <typename Arg>
+  Object* alloc(Arg arg)
+  {
+    Object* o = free_list_;
+    if (o)
+      free_list_ = object_pool_access::next(free_list_);
+    else
+      o = object_pool_access::create<Object>(arg);
+
+    object_pool_access::next(o) = live_list_;
+    object_pool_access::prev(o) = 0;
+    if (live_list_)
+      object_pool_access::prev(live_list_) = o;
+    live_list_ = o;
+
+    return o;
+  }
+
   // Free an object. Moves it to the free list. No destructors are run.
   void free(Object* o)
   {
@@ -140,6 +166,7 @@ private:
 
 } // namespace detail
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

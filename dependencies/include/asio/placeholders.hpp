@@ -2,7 +2,7 @@
 // placeholders.hpp
 // ~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -23,6 +23,7 @@
 
 #include "asio/detail/push_options.hpp"
 
+
 namespace clmdep_asio {
 namespace placeholders {
 
@@ -40,8 +41,18 @@ unspecified bytes_transferred;
 
 /// An argument placeholder, for use with boost::bind(), that corresponds to
 /// the iterator argument of a handler for asynchronous functions such as
-/// clmdep_asio::basic_resolver::async_resolve.
+/// clmdep_asio::async_connect.
 unspecified iterator;
+
+/// An argument placeholder, for use with boost::bind(), that corresponds to
+/// the results argument of a handler for asynchronous functions such as
+/// clmdep_asio::basic_resolver::async_resolve.
+unspecified results;
+
+/// An argument placeholder, for use with boost::bind(), that corresponds to
+/// the results argument of a handler for asynchronous functions such as
+/// clmdep_asio::async_connect.
+unspecified endpoint;
 
 /// An argument placeholder, for use with boost::bind(), that corresponds to
 /// the signal_number argument of a handler for asynchronous functions such as
@@ -62,6 +73,16 @@ inline boost::arg<2> bytes_transferred()
 }
 
 inline boost::arg<2> iterator()
+{
+  return boost::arg<2>();
+}
+
+inline boost::arg<2> results()
+{
+  return boost::arg<2>();
+}
+
+inline boost::arg<2> endpoint()
 {
   return boost::arg<2>();
 }
@@ -94,6 +115,10 @@ static boost::arg<2>& bytes_transferred
   = clmdep_asio::placeholders::detail::placeholder<2>::get();
 static boost::arg<2>& iterator
   = clmdep_asio::placeholders::detail::placeholder<2>::get();
+static boost::arg<2>& results
+  = clmdep_asio::placeholders::detail::placeholder<2>::get();
+static boost::arg<2>& endpoint
+  = clmdep_asio::placeholders::detail::placeholder<2>::get();
 static boost::arg<2>& signal_number
   = clmdep_asio::placeholders::detail::placeholder<2>::get();
 
@@ -107,6 +132,10 @@ namespace
     = clmdep_asio::placeholders::detail::placeholder<2>::get();
   boost::arg<2>& iterator
     = clmdep_asio::placeholders::detail::placeholder<2>::get();
+  boost::arg<2>& results
+    = clmdep_asio::placeholders::detail::placeholder<2>::get();
+  boost::arg<2>& endpoint
+    = clmdep_asio::placeholders::detail::placeholder<2>::get();
   boost::arg<2>& signal_number
     = clmdep_asio::placeholders::detail::placeholder<2>::get();
 } // namespace
@@ -117,6 +146,7 @@ namespace
 
 } // namespace placeholders
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 

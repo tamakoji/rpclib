@@ -68,6 +68,14 @@ public:
     //! internally as well.
     void run();
 
+    //! \brief Starts the server loop. This is a blocking call with exception.
+    //!
+    //! This function behaves similarly to `run`, except the event loop blocks
+    //! until all work has finished and there are no more handlers to be
+    //! dispatched, until the io_context has been stopped, or until the
+    //! specified duration has elapsed.
+    void run_for(uint32_t milliseconds);
+
     //! \brief Starts the server loop on one or more threads. This is a
     //! non-blocking call.
     //!

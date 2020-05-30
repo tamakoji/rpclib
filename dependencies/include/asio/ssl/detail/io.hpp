@@ -2,7 +2,7 @@
 // ssl/detail/io.hpp
 // ~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2015 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2020 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -17,24 +17,22 @@
 
 #include "asio/detail/config.hpp"
 
-#if !defined(ASIO_ENABLE_OLD_SSL)
-# include "asio/ssl/detail/engine.hpp"
-# include "asio/ssl/detail/stream_core.hpp"
-# include "asio/write.hpp"
-#endif // !defined(ASIO_ENABLE_OLD_SSL)
+#include "asio/ssl/detail/engine.hpp"
+#include "asio/ssl/detail/stream_core.hpp"
+#include "asio/write.hpp"
 
 #include "asio/detail/push_options.hpp"
+
 
 namespace clmdep_asio {
 namespace ssl {
 namespace detail {
 
-#if !defined(ASIO_ENABLE_OLD_SSL)
-
 template <typename Stream, typename Operation>
 std::size_t io(Stream& next_layer, stream_core& core,
     const Operation& op, clmdep_asio::error_code& ec)
 {
+  clmdep_asio::error_code io_ec;
   std::size_t bytes_transferred = 0;
   do switch (op(core.engine_, ec, bytes_transferred))
   {
@@ -42,9 +40,13 @@ std::size_t io(Stream& next_layer, stream_core& core,
 
     // If the input buffer is empty then we need to read some more data from
     // the underlying transport.
-    if (clmdep_asio::buffer_size(core.input_) == 0)
+    if (core.input_.size() == 0)
+    {
       core.input_ = clmdep_asio::buffer(core.input_buffer_,
-          next_layer.read_some(core.input_buffer_, ec));
+          next_layer.read_some(core.input_buffer_, io_ec));
+      if (!ec)
+        ec = io_ec;
+    }
 
     // Pass the new input data to the engine.
     core.input_ = core.engine_.put_input(core.input_);
@@ -57,7 +59,9 @@ std::size_t io(Stream& next_layer, stream_core& core,
     // Get output data from the engine and write it to the underlying
     // transport.
     clmdep_asio::write(next_layer,
-        core.engine_.get_output(core.output_buffer_), ec);
+        core.engine_.get_output(core.output_buffer_), io_ec);
+    if (!ec)
+      ec = io_ec;
 
     // Try the operation again.
     continue;
@@ -67,7 +71,9 @@ std::size_t io(Stream& next_layer, stream_core& core,
     // Get output data from the engine and write it to the underlying
     // transport.
     clmdep_asio::write(next_layer,
-        core.engine_.get_output(core.output_buffer_), ec);
+        core.engine_.get_output(core.output_buffer_), io_ec);
+    if (!ec)
+      ec = io_ec;
 
     // Operation is complete. Return result to caller.
     core.engine_.map_error_code(ec);
@@ -118,7 +124,7 @@ public:
   io_op(io_op&& other)
     : next_layer_(other.next_layer_),
       core_(other.core_),
-      op_(other.op_),
+      op_(ASIO_MOVE_CAST(Operation)(other.op_)),
       start_(other.start_),
       want_(other.want_),
       ec_(other.ec_),
@@ -142,7 +148,7 @@ public:
 
           // If the input buffer already has data in it we can pass it to the
           // engine and then retry the operation immediately.
-          if (clmdep_asio::buffer_size(core_.input_) != 0)
+          if (core_.input_.size() != 0)
           {
             core_.input_ = core_.engine_.put_input(core_.input_);
             continue;
@@ -152,7 +158,7 @@ public:
           // cannot allow more than one read operation at a time on the
           // underlying transport. The pending_read_ timer's expiry is set to
           // pos_infin if a read is in progress, and neg_infin otherwise.
-          if (core_.pending_read_.expires_at() == core_.neg_infin())
+          if (core_.expiry(core_.pending_read_) == core_.neg_infin())
           {
             // Prevent other read operations from being started.
             core_.pending_read_.expires_at(core_.pos_infin());
@@ -179,7 +185,7 @@ public:
           // cannot allow more than one write operation at a time on the
           // underlying transport. The pending_write_ timer's expiry is set to
           // pos_infin if a write is in progress, and neg_infin otherwise.
-          if (core_.pending_write_.expires_at() == core_.neg_infin())
+          if (core_.expiry(core_.pending_write_) == core_.neg_infin())
           {
             // Prevent other write operations from being started.
             core_.pending_write_.expires_at(core_.pos_infin());
@@ -205,7 +211,7 @@ public:
           // have to keep in mind that this function might be being called from
           // the async operation's initiating function. In this case we're not
           // allowed to call the handler directly. Instead, issue a zero-sized
-          // read so the handler runs "as-if" posted using io_service::post().
+          // read so the handler runs "as-if" posted using io_context::post().
           if (start)
           {
             next_layer_.async_read_some(
@@ -287,45 +293,45 @@ public:
   Handler handler_;
 };
 
-template <typename Stream, typename Operation,  typename Handler>
-inline void* clmdep_asio_handler_allocate(std::size_t size,
+template <typename Stream, typename Operation, typename Handler>
+inline void* asio_handler_allocate(std::size_t size,
     io_op<Stream, Operation, Handler>* this_handler)
 {
-  return clmdep_asio_handler_alloc_helpers::allocate(
+  return boost_asio_handler_alloc_helpers::allocate(
       size, this_handler->handler_);
 }
 
 template <typename Stream, typename Operation, typename Handler>
-inline void clmdep_asio_handler_deallocate(void* pointer, std::size_t size,
+inline void asio_handler_deallocate(void* pointer, std::size_t size,
     io_op<Stream, Operation, Handler>* this_handler)
 {
-  clmdep_asio_handler_alloc_helpers::deallocate(
+  boost_asio_handler_alloc_helpers::deallocate(
       pointer, size, this_handler->handler_);
 }
 
 template <typename Stream, typename Operation, typename Handler>
-inline bool clmdep_asio_handler_is_continuation(
+inline bool asio_handler_is_continuation(
     io_op<Stream, Operation, Handler>* this_handler)
 {
   return this_handler->start_ == 0 ? true
-    : clmdep_asio_handler_cont_helpers::is_continuation(this_handler->handler_);
+    : boost_asio_handler_cont_helpers::is_continuation(this_handler->handler_);
 }
 
 template <typename Function, typename Stream,
     typename Operation, typename Handler>
-inline void clmdep_asio_handler_invoke(Function& function,
+inline void asio_handler_invoke(Function& function,
     io_op<Stream, Operation, Handler>* this_handler)
 {
-  clmdep_asio_handler_invoke_helpers::invoke(
+  boost_asio_handler_invoke_helpers::invoke(
       function, this_handler->handler_);
 }
 
 template <typename Function, typename Stream,
     typename Operation, typename Handler>
-inline void clmdep_asio_handler_invoke(const Function& function,
+inline void asio_handler_invoke(const Function& function,
     io_op<Stream, Operation, Handler>* this_handler)
 {
-  clmdep_asio_handler_invoke_helpers::invoke(
+  boost_asio_handler_invoke_helpers::invoke(
       function, this_handler->handler_);
 }
 
@@ -338,11 +344,39 @@ inline void async_io(Stream& next_layer, stream_core& core,
       clmdep_asio::error_code(), 0, 1);
 }
 
-#endif // !defined(ASIO_ENABLE_OLD_SSL)
-
 } // namespace detail
 } // namespace ssl
+
+template <typename Stream, typename Operation,
+    typename Handler, typename Allocator>
+struct associated_allocator<
+    ssl::detail::io_op<Stream, Operation, Handler>, Allocator>
+{
+  typedef typename associated_allocator<Handler, Allocator>::type type;
+
+  static type get(const ssl::detail::io_op<Stream, Operation, Handler>& h,
+      const Allocator& a = Allocator()) ASIO_NOEXCEPT
+  {
+    return associated_allocator<Handler, Allocator>::get(h.handler_, a);
+  }
+};
+
+template <typename Stream, typename Operation,
+    typename Handler, typename Executor>
+struct associated_executor<
+    ssl::detail::io_op<Stream, Operation, Handler>, Executor>
+{
+  typedef typename associated_executor<Handler, Executor>::type type;
+
+  static type get(const ssl::detail::io_op<Stream, Operation, Handler>& h,
+      const Executor& ex = Executor()) ASIO_NOEXCEPT
+  {
+    return associated_executor<Handler, Executor>::get(h.handler_, ex);
+  }
+};
+
 } // namespace clmdep_asio
+
 
 #include "asio/detail/pop_options.hpp"
 
